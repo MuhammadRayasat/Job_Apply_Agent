@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — JobAgent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-gauge"></i> Dashboard</h1>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="scrapeJobs()">
+      <i class="fa-solid fa-magnifying-glass"></i> Scrape Jobs
+    </button>
+    <button class="btn btn-primary" onclick="matchAndApply()">
+      <i class="fa-solid fa-bolt"></i> AI Match &amp; Apply
+    </button>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon blue"><i class="fa-solid fa-briefcase"></i></div>
+    <div class="stat-info">
+      <span class="stat-number">{{ stats.total_jobs }}</span>
+      <span class="stat-label">Jobs Found</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="fa-solid fa-paper-plane"></i></div>
+    <div class="stat-info">
+      <span class="stat-number">{{ stats.total_applied }}</span>
+      <span class="stat-label">Total Applied</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+    <div class="stat-info">
+      <span class="stat-number">{{ stats.success }}</span>
+      <span class="stat-label">Successful</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon orange"><i class="fa-solid fa-clock"></i></div>
+    <div class="stat-info">
+      <span class="stat-number">{{ stats.pending }}</span>
+      <span class="stat-label">Pending</span>
+    </div>
+  </div>
+</div>
+
+<!-- Status Banner -->
+{% if not user.gemini_api_key or not user.cv_filename %}
+<div class="setup-banner">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+  <span>Setup incomplete hai! <a href="{{ url_for('setup') }}">Setup page pe jaao</a> — CV upload karo aur Gemini API key daalo.</span>
+</div>
+{% endif %}
+
+<!-- Scheduler Status Bar -->
+<div class="scheduler-bar {{ 'active' if scheduler.running else 'inactive' }}">
+  <div class="scheduler-left">
+    <i class="fa-solid {{ 'fa-circle-play' if scheduler.running else 'fa-circle-stop' }}"></i>
+    <span>Auto Agent:
+      <strong>{{ 'Running' if scheduler.running else 'Stopped' }}</strong>
+    </span>
+    {% if scheduler.running %}
+    <span class="sched-sep">|</span>
+    <i class="fa-solid fa-clock"></i>
+    <span>Every 15 min | Next: <strong>{{ scheduler.next_run }}</strong></span>
+    {% endif %}
+    {% if user.last_run %}
+    <span class="sched-sep">|</span>
+    <i class="fa-solid fa-rotate"></i>
+    <span>Last run: <strong>{{ user.last_run[:16].replace('T',' ') }} UTC</strong></span>
+    {% endif %}
+  </div>
+  <button class="btn btn-sm btn-primary" onclick="runNow()">
+    <i class="fa-solid fa-forward-fast"></i> Run Now
+  </button>
+</div>
+
+<!-- Loader -->
+<div id="loader" class="loader-overlay" style="display:none;">
+  <div class="loader-box">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p id="loader-text">Processing...</p>
+  </div>
+</div>
+
+<!-- Applications Table -->
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fa-solid fa-list-check"></i> Applications</h2>
+    <button class="btn btn-sm btn-secondary" onclick="loadApplications()">
+      <i class="fa-solid fa-rotate"></i> Refresh
+    </button>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="data-table" id="applications-table">
+        <thead>
+          <tr>
+            <th>Job Title</th>
+            <th>Company</th>
+            <th>Location</th>
+            <th>Source</th>
+            <th>Match %</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="applications-body">
+          {% if applications %}
+            {% for app in applications %}
+            <tr>
+              <td><strong>{{ app.title or 'N/A' }}</strong></td>
+              <td>{{ app.company or 'N/A' }}</td>
+              <td>{{ app.location or 'N/A' }}</td>
+              <td><span class="badge badge-source">{{ app.source or 'N/A' }}</span></td>
+              <td>
+                <div class="score-bar">
+                  <div class="score-fill" style="width: {{ app.match_score or 0 }}%"></div>
+                  <span>{{ app.match_score or 0 }}%</span>
+                </div>
+              </td>
+              <td>
+                <span class="badge badge-{{ app.status }}">
+                  {% if app.status == 'applied' %}✅ Applied
+                  {% elif app.status == 'failed' %}🔗 Manual
+                  {% elif app.status == 'pending' %}⏳ Pending
+                  {% else %}{{ app.status }}{% endif %}
+                </span>
+              </td>
+              <td>{{ app.applied_at[:10] if app.applied_at else 'N/A' }}</td>
+              <td>
+                {% if app.status == 'applied' %}
+                  <span style="color:#22c55e; font-size:12px;"><i class="fa-solid fa-check"></i> Done</span>
+                {% elif app.url %}
+                  <a href="{{ app.url }}" target="_blank" class="btn btn-xs btn-secondary">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Job
+                  </a>
+                {% else %}
+                  <button class="btn btn-xs btn-primary" onclick="applyNow({{ app.id }})">
+                    <i class="fa-solid fa-paper-plane"></i> Apply
+                  </button>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="8" class="empty-state">
+              <i class="fa-solid fa-inbox"></i>
+              <p>Koi application nahi. "AI Match &amp; Apply" click karo!</p>
+            </td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Jobs -->
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fa-solid fa-newspaper"></i> Recent Jobs Scraped</h2>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Company</th>
+            <th>Location</th>
+            <th>Source</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if jobs %}
+            {% for job in jobs %}
+            <tr>
+              <td><strong>{{ job.title or 'N/A' }}</strong></td>
+              <td>{{ job.company or 'N/A' }}</td>
+              <td>{{ job.location or 'N/A' }}</td>
+              <td><span class="badge badge-source">{{ job.source or 'N/A' }}</span></td>
+              <td>
+                {% if job.url %}
+                <a href="{{ job.url }}" target="_blank" class="btn btn-xs btn-secondary">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> View
+                </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" class="empty-state">
+              <i class="fa-solid fa-inbox"></i>
+              <p>Jobs nahi hain. "Scrape Jobs" click karo!</p>
+            </td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function showLoader(text) {
+  document.getElementById("loader-text").innerText = text;
+  document.getElementById("loader").style.display = "flex";
+}
+function hideLoader() {
+  document.getElementById("loader").style.display = "none";
+}
+
+function scrapeJobs() {
+  showLoader("Jobs scrape ho rahi hain... Thoda waqt lagega.");
+  fetch("/scrape-jobs", { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+      hideLoader();
+      showToast(data.message, data.status === "ok" ? "success" : "danger");
+      if (data.status === "ok") setTimeout(() => location.reload(), 3000);
+    })
+    .catch(() => { hideLoader(); showToast("Error aa gaya.", "danger"); });
+}
+
+function matchAndApply() {
+  showLoader("AI job matching kar raha hai... Patience rakho!");
+  fetch("/match-and-apply", { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+      hideLoader();
+      showToast(data.message, data.status === "ok" ? "success" : "danger");
+      if (data.status === "ok") setTimeout(() => location.reload(), 5000);
+    })
+    .catch(() => { hideLoader(); showToast("Error aa gaya.", "danger"); });
+}
+
+function applyNow(appId) {
+  showLoader("Apply ho raha hai...");
+  fetch(`/apply/${appId}`, { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+      hideLoader();
+      showToast(data.message, data.status === "ok" ? "success" : "danger");
+      if (data.status === "ok") setTimeout(() => location.reload(), 2000);
+    })
+    .catch(() => { hideLoader(); showToast("Error aa gaya.", "danger"); });
+}
+
+function loadApplications() { location.reload(); }
+
+function runNow() {
+  showLoader("Agent abhi manually run ho raha hai — scraping + matching + applying...");
+  fetch("/api/run-now", { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+      hideLoader();
+      showToast(data.message, data.status === "ok" ? "success" : "danger");
+      if (data.status === "ok") setTimeout(() => location.reload(), 8000);
+    })
+    .catch(() => { hideLoader(); showToast("Error aa gaya.", "danger"); });
+}
+</script>
+{% endblock %}

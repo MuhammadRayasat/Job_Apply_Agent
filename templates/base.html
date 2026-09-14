@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Job Apply Agent{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+{% if session.user_id %}
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <i class="fa-solid fa-robot"></i>
+    <span>JobAgent</span>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-gauge"></i> Dashboard
+    </a>
+    <a href="{{ url_for('setup') }}" class="nav-link {% if request.endpoint == 'setup' %}active{% endif %}">
+      <i class="fa-solid fa-gear"></i> Setup
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="user-name"><i class="fa-solid fa-user"></i> {{ session.user_name }}</span>
+    <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="main-content">
+{% else %}
+<div class="main-content full-width">
+{% endif %}
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            <i class="fa-solid fa-circle-info"></i> {{ message }}
+            <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Login — JobAgent{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <i class="fa-solid fa-robot"></i>
+      <h1>JobAgent</h1>
+      <p>AI-Powered Job Apply Agent</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+      <div class="form-group">
+        <label><i class="fa-solid fa-envelope"></i> Email</label>
+        <input type="email" name="email" placeholder="apni@email.com" required />
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-lock"></i> Password</label>
+        <div class="password-wrap">
+          <input type="password" name="password" id="password" placeholder="••••••••" required />
+          <span class="toggle-pass" onclick="togglePass()"><i class="fa-solid fa-eye" id="eye-icon"></i></span>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">
+        <i class="fa-solid fa-right-to-bracket"></i> Login
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Account nahi hai? <a href="{{ url_for('register') }}">Register karo</a>
+    </div>
+  </div>
+</div>
+
+<script>
+function togglePass() {
+  const inp = document.getElementById("password");
+  const ico = document.getElementById("eye-icon");
+  if (inp.type === "password") {
+    inp.type = "text";
+    ico.className = "fa-solid fa-eye-slash";
+  } else {
+    inp.type = "password";
+    ico.className = "fa-solid fa-eye";
+  }
+}
+</script>
+{% endblock %}

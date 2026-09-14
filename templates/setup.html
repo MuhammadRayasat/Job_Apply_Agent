@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}Setup — JobAgent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-gear"></i> Setup</h1>
+</div>
+
+<div class="setup-grid">
+
+  <!-- Card 1: Gemini API Key -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fa-solid fa-key"></i> Gemini API Key</h2>
+      {% if user.gemini_api_key %}
+        <span class="badge badge-applied"><i class="fa-solid fa-check"></i> Set</span>
+      {% else %}
+        <span class="badge badge-failed"><i class="fa-solid fa-xmark"></i> Not Set</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <div class="info-box">
+        <i class="fa-solid fa-circle-info"></i>
+        <p>Free API key yahan se banao:
+          <a href="https://aistudio.google.com/app/apikey" target="_blank">
+            aistudio.google.com <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+        </p>
+      </div>
+      <form method="POST" action="{{ url_for('setup') }}">
+        <input type="hidden" name="action" value="save_api" />
+        <div class="form-group">
+          <label>Gemini API Key</label>
+          <input type="password" name="gemini_api_key"
+                 value="{{ user.gemini_api_key or '' }}"
+                 placeholder="AIza..." />
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-briefcase"></i> Job Titles (comma separated)</label>
+          <input type="text" name="job_titles"
+                 value="{{ user.job_titles or '' }}"
+                 placeholder="Python Developer, Data Analyst, Software Engineer" />
+          <small>Jo jobs dhundni hain, comma lagao beech mein</small>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-location-dot"></i> Preferred Location</label>
+          <input type="text" name="location"
+                 value="{{ user.location or '' }}"
+                 placeholder="Karachi, Lahore, Remote" />
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-envelope"></i> Notification Email</label>
+          <input type="email" name="notify_email"
+                 value="{{ user.notify_email or '' }}"
+                 placeholder="notifications@gmail.com" />
+          <small>Yahan email aayegi jab koi job apply ho — apna Gmail daalo</small>
+        </div>
+        <div class="form-group">
+          <div class="toggle-row">
+            <div>
+              <label style="margin-bottom:2px;"><i class="fa-solid fa-robot"></i> Auto Apply</label>
+              <small style="display:block; color: var(--text-muted);">Agent khud automatically apply kare</small>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" name="auto_apply" id="auto_apply"
+                     {{ 'checked' if user.auto_apply != 0 else '' }} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i> Save Settings
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Card 3: LinkedIn Credentials -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fa-brands fa-linkedin"></i> LinkedIn Account</h2>
+      {% if user.linkedin_email %}
+        <span class="badge badge-applied"><i class="fa-solid fa-check"></i> Set</span>
+      {% else %}
+        <span class="badge badge-failed"><i class="fa-solid fa-xmark"></i> Not Set</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <div class="info-box">
+        <i class="fa-solid fa-shield-halved"></i>
+        <p>Credentials encrypted database mein store honge. Agent inhe sirf apply karne ke liye use karega.</p>
+      </div>
+      <form method="POST" action="{{ url_for('setup') }}">
+        <input type="hidden" name="action" value="save_linkedin" />
+        <div class="form-group">
+          <label><i class="fa-solid fa-envelope"></i> LinkedIn Email</label>
+          <input type="email" name="linkedin_email"
+                 value="{{ user.linkedin_email or '' }}"
+                 placeholder="tumhari@email.com" />
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-lock"></i> LinkedIn Password</label>
+          <div class="password-wrap">
+            <input type="password" name="linkedin_password" id="li-pass"
+                   value="{{ user.linkedin_password or '' }}"
+                   placeholder="••••••••" />
+            <span class="toggle-pass" onclick="toggleLiPass()">
+              <i class="fa-solid fa-eye" id="li-eye"></i>
+            </span>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i> Save LinkedIn
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Card 4: CV Upload -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fa-solid fa-file-pdf"></i> CV / Resume Upload</h2>
+      {% if user.cv_filename %}
+        <span class="badge badge-applied"><i class="fa-solid fa-check"></i> Uploaded</span>
+      {% else %}
+        <span class="badge badge-failed"><i class="fa-solid fa-xmark"></i> Not Uploaded</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if user.cv_filename %}
+        <div class="cv-preview">
+          <i class="fa-solid fa-file-lines"></i>
+          <div>
+            <strong>Current CV:</strong> {{ user.cv_filename }}<br />
+            <small>{{ user.cv_text[:200] if user.cv_text else 'Text extract nahi hua' }}...</small>
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('setup') }}" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="upload_cv" />
+        <div class="form-group">
+          <label>CV File (PDF, DOCX, DOC — max 5MB)</label>
+          <div class="file-drop" id="file-drop" onclick="document.getElementById('cv-input').click()">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <p>Click karo ya file drag karo</p>
+            <small>PDF, DOCX, DOC supported</small>
+            <input type="file" name="cv_file" id="cv-input" accept=".pdf,.docx,.doc"
+                   style="display:none" onchange="updateFileName(this)" />
+          </div>
+          <div id="file-name" class="file-name-display" style="display:none"></div>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-upload"></i> Upload CV
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Card 3: Status Check -->
+  <div class="card full-width-card">
+    <div class="card-header">
+      <h2><i class="fa-solid fa-list-check"></i> Setup Status</h2>
+    </div>
+    <div class="card-body">
+      <div class="checklist">
+        <div class="check-item {{ 'done' if user.gemini_api_key else 'todo' }}">
+          <i class="fa-solid {{ 'fa-circle-check' if user.gemini_api_key else 'fa-circle-xmark' }}"></i>
+          <span>Gemini API Key set karo</span>
+        </div>
+        <div class="check-item {{ 'done' if user.cv_filename else 'todo' }}">
+          <i class="fa-solid {{ 'fa-circle-check' if user.cv_filename else 'fa-circle-xmark' }}"></i>
+          <span>CV upload karo</span>
+        </div>
+        <div class="check-item {{ 'done' if user.job_titles else 'todo' }}">
+          <i class="fa-solid {{ 'fa-circle-check' if user.job_titles else 'fa-circle-xmark' }}"></i>
+          <span>Job titles set karo</span>
+        </div>
+        <div class="check-item {{ 'done' if user.gemini_api_key and user.cv_filename and user.job_titles else 'todo' }}">
+          <i class="fa-solid {{ 'fa-circle-check' if user.gemini_api_key and user.cv_filename and user.job_titles else 'fa-circle-xmark' }}"></i>
+          <span>Dashboard pe jaao aur jobs scrape karo!</span>
+        </div>
+        <div class="check-item {{ 'done' if user.notify_email else 'todo' }}">
+          <i class="fa-solid {{ 'fa-circle-check' if user.notify_email else 'fa-circle-xmark' }}"></i>
+          <span>Notification email daalo (apply hone pe email aayegi)</span>
+        </div>
+        <div class="check-item {{ 'done' if user.linkedin_email else 'todo' }}">
+          <i class="fa-solid {{ 'fa-circle-check' if user.linkedin_email else 'fa-circle-xmark' }}"></i>
+          <span>LinkedIn account set karo (auto apply ke liye)</span>
+        </div>
+        <div class="check-item done">
+          <i class="fa-solid fa-robot"></i>
+          <span>Agent har 6 ghante automatically kaam karega — kuch karne ki zaroorat nahi!</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function updateFileName(input) {
+  const display = document.getElementById("file-name");
+  if (input.files && input.files[0]) {
+    display.style.display = "block";
+    display.innerHTML = `<i class="fa-solid fa-file"></i> ${input.files[0].name}`;
+    document.getElementById("file-drop").style.borderColor = "#6366f1";
+  }
+}
+
+function toggleLiPass() {
+  const inp = document.getElementById("li-pass");
+  const ico = document.getElementById("li-eye");
+  if (inp.type === "password") {
+    inp.type = "text";
+    ico.className = "fa-solid fa-eye-slash";
+  } else {
+    inp.type = "password";
+    ico.className = "fa-solid fa-eye";
+  }
+}
+</script>
+{% endblock %}
