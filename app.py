@@ -311,6 +311,19 @@ def setup():
             db.commit()
             flash("LinkedIn credentials save ho gaye!", "success")
 
+        # Save Gmail credentials to .env
+        elif action == "save_gmail":
+            gmail_user = request.form.get("gmail_user", "").strip().lower()
+            gmail_pass = request.form.get("gmail_app_password", "").strip()
+            if not gmail_user or not gmail_pass:
+                flash("Gmail email aur App Password dono zaroori hain.", "danger")
+                return redirect(url_for("setup"))
+            _update_env("GMAIL_USER", gmail_user)
+            _update_env("GMAIL_APP_PASSWORD", gmail_pass)
+            os.environ["GMAIL_USER"]         = gmail_user
+            os.environ["GMAIL_APP_PASSWORD"] = gmail_pass
+            flash("Gmail credentials save ho gaye!", "success")
+
         # Save security question & answer
         elif action == "save_security":
             question = request.form.get("security_question", "").strip()
@@ -357,7 +370,8 @@ def setup():
         return redirect(url_for("setup"))
 
     return render_template("setup.html", user=user,
-                           cycle_minutes=int(os.environ.get("AUTO_CYCLE_MINUTES", 15)))
+                           cycle_minutes=int(os.environ.get("AUTO_CYCLE_MINUTES", 15)),
+                           gmail_user=os.environ.get("GMAIL_USER", ""))
 
 
 # ---------------------------------------------------------------------------
