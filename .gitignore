@@ -1,0 +1,27 @@
+# Virtual environment
+venv/
+venv312/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables (secrets)
+.env
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Uploaded files
+uploads/cvs/
+
+# Playwright browsers
+ms-playwright/
+
+# OS files
+.DS_Store
+Thumbs.db
