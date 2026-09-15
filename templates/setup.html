@@ -68,6 +68,19 @@
             </label>
           </div>
         </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-clock"></i> Auto Cycle Interval (minutes)</label>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input type="number" name="cycle_minutes" id="cycle_minutes"
+                   min="1" max="1440"
+                   value="{{ cycle_minutes }}"
+                   style="width:100px;" />
+            <span style="color:var(--text-muted); font-size:13px;">
+              = har <strong id="cycle_display">{{ cycle_minutes }}</strong> minute baad agent chalega
+            </span>
+          </div>
+          <small>Min: 1 &nbsp;|&nbsp; Recommended: 15–60 &nbsp;|&nbsp; Max: 1440 (24 hrs)</small>
+        </div>
         <button type="submit" class="btn btn-primary">
           <i class="fa-solid fa-floppy-disk"></i> Save Settings
         </button>
@@ -256,6 +269,15 @@ function toggleLiPass() {
     inp.type = "password";
     ico.className = "fa-solid fa-eye";
   }
+}
+
+// Live update cycle display
+const cycleInput = document.getElementById("cycle_minutes");
+const cycleDisplay = document.getElementById("cycle_display");
+if (cycleInput && cycleDisplay) {
+  cycleInput.addEventListener("input", function() {
+    cycleDisplay.textContent = this.value || "?";
+  });
 }
 </script>
 {% endblock %}

@@ -11,6 +11,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 import pytz
+import os
 
 _scheduler = None
 
@@ -24,14 +25,18 @@ def start_scheduler(app):
     """Initialize and start the background scheduler."""
     global _scheduler
 
+    # .env se interval lo, default 15 minutes
+    interval = int(os.environ.get("AUTO_CYCLE_MINUTES", 15))
+    interval = max(1, interval)  # minimum 1 minute
+
     _scheduler = BackgroundScheduler(timezone=pytz.utc)
 
-    # Job 1: Scrape + Match + Apply — every 15 minutes
+    # Job 1: Scrape + Match + Apply — configurable interval
     _scheduler.add_job(
         func=lambda: _run_auto_cycle(app),
-        trigger=IntervalTrigger(minutes=15),
+        trigger=IntervalTrigger(minutes=interval),
         id="auto_cycle",
-        name="Auto Scrape + Match + Apply",
+        name=f"Auto Scrape + Match + Apply (every {interval} min)",
         replace_existing=True,
         misfire_grace_time=60
     )

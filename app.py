@@ -31,6 +31,26 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def _update_env(key, value):
+    """Update a key=value in .env file, or add it if not present."""
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    try:
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+        updated = False
+        for i, line in enumerate(lines):
+            if line.startswith(f"{key}="):
+                lines[i] = f"{key}={value}\n"
+                updated = True
+                break
+        if not updated:
+            lines.append(f"{key}={value}\n")
+        with open(env_path, "w") as f:
+            f.writelines(lines)
+    except Exception as e:
+        print(f"[ENV] Could not update .env: {e}")
+
+
 def login_required(f):
     from functools import wraps
     @wraps(f)
@@ -250,6 +270,28 @@ def setup():
             notify_email = request.form.get("notify_email", "").strip().lower()
             auto_apply   = 1 if request.form.get("auto_apply") else 0
 
+            # Auto cycle interval — .env file update karo
+            cycle_minutes = request.form.get("cycle_minutes", "15").strip()
+            try:
+                cycle_minutes = str(max(1, int(cycle_minutes)))
+            except ValueError:
+                cycle_minutes = "15"
+            _update_env("AUTO_CYCLE_MINUTES", cycle_minutes)
+            os.environ["AUTO_CYCLE_MINUTES"] = cycle_minutes
+
+            # Live scheduler update (restart nahi karna padega)
+            try:
+                from modules.scheduler import get_scheduler
+                from apscheduler.triggers.interval import IntervalTrigger
+                sched = get_scheduler()
+                if sched and sched.running:
+                    sched.reschedule_job(
+                        "auto_cycle",
+                        trigger=IntervalTrigger(minutes=int(cycle_minutes))
+                    )
+            except Exception:
+                pass
+
             db.execute(
                 "UPDATE users SET gemini_api_key=?, job_titles=?, location=?, notify_email=?, auto_apply=? WHERE id=?",
                 (api_key, job_titles, location, notify_email, auto_apply, session["user_id"])
@@ -313,7 +355,8 @@ def setup():
 
         return redirect(url_for("setup"))
 
-    return render_template("setup.html", user=user)
+    return render_template("setup.html", user=user,
+                           cycle_minutes=int(os.environ.get("AUTO_CYCLE_MINUTES", 15)))
 
 
 # ---------------------------------------------------------------------------
