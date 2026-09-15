@@ -3,6 +3,10 @@ Entry point — run this to start the Job Apply Agent.
 Usage: python run.py
 """
 import os
+
+# Must be set BEFORE any google/protobuf imports — fixes Python 3.14 compatibility
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
 from dotenv import load_dotenv
 load_dotenv()
 
