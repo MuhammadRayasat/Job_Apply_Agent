@@ -75,6 +75,44 @@
     </div>
   </div>
 
+  <!-- Card 2: Security Question -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fa-solid fa-shield-halved"></i> Security Question</h2>
+      {% if user.security_question %}
+        <span class="badge badge-applied"><i class="fa-solid fa-check"></i> Set</span>
+      {% else %}
+        <span class="badge badge-failed"><i class="fa-solid fa-xmark"></i> Not Set</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <div class="info-box">
+        <i class="fa-solid fa-circle-info"></i>
+        <p>Yeh question password reset ke liye use hoga — "Forgot Password" option mein.</p>
+      </div>
+      <form method="POST" action="{{ url_for('setup') }}">
+        <input type="hidden" name="action" value="save_security" />
+        <div class="form-group">
+          <label><i class="fa-solid fa-circle-question"></i> Security Question</label>
+          <input type="text" name="security_question"
+                 value="{{ user.security_question or '' }}"
+                 placeholder="e.g. Tumhara pehla school kaunsa tha?" />
+          <small>Aisa question likho jiska jawab sirf tum jaante ho</small>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-pen"></i> Answer</label>
+          <input type="text" name="security_answer"
+                 placeholder="{{ '••••••• (already set)' if user.security_answer else 'Apna jawab likho...' }}"
+                 autocomplete="off" />
+          <small>Answer lowercase mein save hoga — case matter nahi karega</small>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i> Save Security Question
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- Card 3: LinkedIn Credentials -->
   <div class="card">
     <div class="card-header">

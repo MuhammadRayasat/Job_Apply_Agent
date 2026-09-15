@@ -71,11 +71,13 @@ def _migrate_db():
     existing_cols = [row[1] for row in db.execute("PRAGMA table_info(users)").fetchall()]
 
     migrations = {
-        "notify_email":     "ALTER TABLE users ADD COLUMN notify_email TEXT",
-        "auto_apply":       "ALTER TABLE users ADD COLUMN auto_apply INTEGER DEFAULT 1",
-        "last_run":         "ALTER TABLE users ADD COLUMN last_run TEXT",
-        "linkedin_email":   "ALTER TABLE users ADD COLUMN linkedin_email TEXT",
-        "linkedin_password":"ALTER TABLE users ADD COLUMN linkedin_password TEXT",
+        "notify_email":       "ALTER TABLE users ADD COLUMN notify_email TEXT",
+        "auto_apply":         "ALTER TABLE users ADD COLUMN auto_apply INTEGER DEFAULT 1",
+        "last_run":           "ALTER TABLE users ADD COLUMN last_run TEXT",
+        "linkedin_email":     "ALTER TABLE users ADD COLUMN linkedin_email TEXT",
+        "linkedin_password":  "ALTER TABLE users ADD COLUMN linkedin_password TEXT",
+        "security_question":  "ALTER TABLE users ADD COLUMN security_question TEXT",
+        "security_answer":    "ALTER TABLE users ADD COLUMN security_answer TEXT",
     }
 
     for col, sql in migrations.items():

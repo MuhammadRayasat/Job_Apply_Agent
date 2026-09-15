@@ -3,6 +3,8 @@ Entry point — run this to start the Job Apply Agent.
 Usage: python run.py
 """
 import os
+import threading
+import webbrowser
 
 # Must be set BEFORE any google/protobuf imports — fixes Python 3.14 compatibility
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -26,6 +28,9 @@ if __name__ == "__main__":
     print("  Open: http://localhost:5001")
     print("  Auto-cycle: every 15 minutes (background)")
     print("="*50 + "\n")
+
+    # Browser ko 1.5 second baad open karo (server start hone ka wait)
+    threading.Timer(1.5, lambda: webbrowser.open("http://localhost:5001")).start()
 
     try:
         app.run(debug=False, host="0.0.0.0", port=5001, use_reloader=False)

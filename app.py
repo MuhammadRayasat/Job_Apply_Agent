@@ -111,6 +111,89 @@ def logout():
 
 
 # ---------------------------------------------------------------------------
+# Forgot Password
+# ---------------------------------------------------------------------------
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    """Step 1 — user email deta hai, security question show hota hai."""
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        db    = get_db()
+        user  = db.execute(
+            "SELECT id, security_question FROM users WHERE email=?", (email,)
+        ).fetchone()
+
+        if not user or not user["security_question"]:
+            flash("Yeh email registered nahi hai ya security question set nahi.", "danger")
+            return render_template("forgot_password.html", step="email")
+
+        # Store email in session to use in next step
+        session["reset_email"] = email
+        return render_template("forgot_password.html", step="question",
+                               question=user["security_question"], email=email)
+
+    return render_template("forgot_password.html", step="email")
+
+
+@app.route("/verify-answer", methods=["POST"])
+def verify_answer():
+    """Step 2 — answer verify karo, agar sahi ho to new password form dikhao."""
+    email  = request.form.get("email", "").strip().lower()
+    answer = request.form.get("answer", "").strip().lower()
+
+    db   = get_db()
+    user = db.execute(
+        "SELECT id, security_question, security_answer FROM users WHERE email=?", (email,)
+    ).fetchone()
+
+    if not user:
+        flash("Email nahi mili.", "danger")
+        return redirect(url_for("forgot_password"))
+
+    from werkzeug.security import check_password_hash
+    if not check_password_hash(user["security_answer"], answer):
+        flash("Jawab galat hai. Dobara try karo.", "danger")
+        return render_template("forgot_password.html", step="question",
+                               question=user["security_question"], email=email)
+
+    # Answer sahi — password reset form dikhao
+    session["reset_verified_email"] = email
+    return render_template("forgot_password.html", step="reset", email=email)
+
+
+@app.route("/reset-password", methods=["POST"])
+def reset_password():
+    """Step 3 — naya password save karo."""
+    email    = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+    confirm  = request.form.get("confirm_password", "")
+
+    # Security check — sirf verified session se aaye
+    if session.get("reset_verified_email") != email:
+        flash("Unauthorized.", "danger")
+        return redirect(url_for("forgot_password"))
+
+    if len(password) < 6:
+        flash("Password kam az kam 6 characters ka hona chahiye.", "danger")
+        return render_template("forgot_password.html", step="reset", email=email)
+
+    if password != confirm:
+        flash("Dono passwords match nahi karte.", "danger")
+        return render_template("forgot_password.html", step="reset", email=email)
+
+    from werkzeug.security import generate_password_hash
+    db = get_db()
+    db.execute("UPDATE users SET password=? WHERE email=?",
+               (generate_password_hash(password), email))
+    db.commit()
+    session.pop("reset_verified_email", None)
+    session.pop("reset_email", None)
+    flash("Password successfully change ho gaya! Ab login karo.", "success")
+    return redirect(url_for("login"))
+
+
+# ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
 
@@ -184,6 +267,21 @@ def setup():
             )
             db.commit()
             flash("LinkedIn credentials save ho gaye!", "success")
+
+        # Save security question & answer
+        elif action == "save_security":
+            question = request.form.get("security_question", "").strip()
+            answer   = request.form.get("security_answer", "").strip().lower()
+            if not question or not answer:
+                flash("Question aur answer dono zaroori hain.", "danger")
+                return redirect(url_for("setup"))
+            from werkzeug.security import generate_password_hash
+            db.execute(
+                "UPDATE users SET security_question=?, security_answer=? WHERE id=?",
+                (question, generate_password_hash(answer), session["user_id"])
+            )
+            db.commit()
+            flash("Security question save ho gaya!", "success")
 
         # Upload CV
         elif action == "upload_cv":
