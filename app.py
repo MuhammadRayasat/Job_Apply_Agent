@@ -246,7 +246,8 @@ def dashboard():
     scheduler_status = get_scheduler_status()
 
     return render_template("dashboard.html", user=user, applications=apps, jobs=jobs,
-                           stats=stats, scheduler=scheduler_status)
+                           stats=stats, scheduler=scheduler_status,
+                           cycle_minutes=int(os.environ.get("AUTO_CYCLE_MINUTES", 15)))
 
 
 # ---------------------------------------------------------------------------

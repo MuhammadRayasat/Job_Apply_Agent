@@ -64,7 +64,7 @@
     {% if scheduler.running %}
     <span class="sched-sep">|</span>
     <i class="fa-solid fa-clock"></i>
-    <span>Every 15 min | Next: <strong>{{ scheduler.next_run }}</strong></span>
+    <span>Every {{ cycle_minutes }} min | Next: <strong>{{ scheduler.next_run }}</strong></span>
     {% endif %}
     {% if user.last_run %}
     <span class="sched-sep">|</span>
