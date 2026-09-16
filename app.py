@@ -271,6 +271,11 @@ def setup():
             notify_email = request.form.get("notify_email", "").strip().lower()
             auto_apply   = 1 if request.form.get("auto_apply") else 0
 
+            # Personal info fields
+            phone_number     = request.form.get("phone_number", "").strip()
+            expected_salary  = request.form.get("expected_salary", "").strip()
+            years_experience = request.form.get("years_experience", "").strip()
+
             # Auto cycle interval — .env file update karo
             cycle_minutes = request.form.get("cycle_minutes", "15").strip()
             try:
@@ -294,8 +299,9 @@ def setup():
                 pass
 
             db.execute(
-                "UPDATE users SET gemini_api_key=?, job_titles=?, location=?, notify_email=?, auto_apply=? WHERE id=?",
-                (api_key, job_titles, location, notify_email, auto_apply, session["user_id"])
+                "UPDATE users SET gemini_api_key=?, job_titles=?, location=?, notify_email=?, auto_apply=?, phone_number=?, expected_salary=?, years_experience=? WHERE id=?",
+                (api_key, job_titles, location, notify_email, auto_apply,
+                 phone_number, expected_salary, years_experience, session["user_id"])
             )
             db.commit()
             flash("Settings save ho gayi!", "success")

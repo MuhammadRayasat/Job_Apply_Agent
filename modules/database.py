@@ -91,6 +91,9 @@ def _migrate_db():
         "linkedin_password":  "ALTER TABLE users ADD COLUMN linkedin_password TEXT",
         "security_question":  "ALTER TABLE users ADD COLUMN security_question TEXT",
         "security_answer":    "ALTER TABLE users ADD COLUMN security_answer TEXT",
+        "phone_number":       "ALTER TABLE users ADD COLUMN phone_number TEXT",
+        "expected_salary":    "ALTER TABLE users ADD COLUMN expected_salary TEXT",
+        "years_experience":   "ALTER TABLE users ADD COLUMN years_experience TEXT",
     }
 
     for col, sql in migrations.items():

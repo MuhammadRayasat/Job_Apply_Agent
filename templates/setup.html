@@ -56,6 +56,28 @@
           <small>Yahan email aayegi jab koi job apply ho — apna Gmail daalo</small>
         </div>
         <div class="form-group">
+          <label><i class="fa-solid fa-phone"></i> Phone Number</label>
+          <input type="tel" name="phone_number"
+                 value="{{ user.phone_number or '' }}"
+                 placeholder="+923001234567" />
+          <small>Job application forms mein automatically fill hoga</small>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-money-bill-wave"></i> Expected Salary</label>
+          <input type="text" name="expected_salary"
+                 value="{{ user.expected_salary or '' }}"
+                 placeholder="e.g. 80000 ya 80,000 PKR" />
+          <small>Salary fields mein automatically fill hoga</small>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-briefcase"></i> Years of Experience</label>
+          <input type="number" name="years_experience"
+                 value="{{ user.years_experience or '' }}"
+                 placeholder="e.g. 2"
+                 min="0" max="50" style="width:100px;" />
+          <small>Experience fields mein automatically fill hoga</small>
+        </div>
+        <div class="form-group">
           <div class="toggle-row">
             <div>
               <label style="margin-bottom:2px;"><i class="fa-solid fa-robot"></i> Auto Apply</label>

@@ -277,6 +277,12 @@ def _upload_cv(page, cv_path: str):
 
 
 def _fill_inputs(page, user_info: dict):
+    phone    = user_info.get("phone_number", "").strip()
+    salary   = user_info.get("expected_salary", "").strip()
+    exp      = user_info.get("years_experience", "").strip()
+    location = user_info.get("location", "").strip()
+    name     = user_info.get("name", "").strip()
+
     for inp in page.locator(
         "input[type='text'], input[type='tel'], input[type='number']"
     ).all():
@@ -286,15 +292,21 @@ def _fill_inputs(page, user_info: dict):
             lbl = (inp.get_attribute("aria-label") or
                    inp.get_attribute("placeholder") or "").lower()
             if any(x in lbl for x in ["phone", "mobile", "contact"]):
-                inp.fill("+923001234567")
+                inp.fill(phone or "+92300000000")
             elif any(x in lbl for x in ["city", "location", "address"]):
-                inp.fill(user_info.get("location", "Lahore"))
+                inp.fill(location or "Lahore")
             elif any(x in lbl for x in ["year", "experience"]):
-                inp.fill("2")
-            elif any(x in lbl for x in ["name", "first", "last"]):
-                inp.fill(user_info.get("name", ""))
-            elif any(x in lbl for x in ["salary", "expected"]):
-                inp.fill("80000")
+                inp.fill(exp or "1")
+            elif any(x in lbl for x in ["first name"]):
+                parts = name.split()
+                inp.fill(parts[0] if parts else name)
+            elif any(x in lbl for x in ["last name"]):
+                parts = name.split()
+                inp.fill(parts[-1] if len(parts) > 1 else name)
+            elif any(x in lbl for x in ["name"]):
+                inp.fill(name)
+            elif any(x in lbl for x in ["salary", "expected", "ctc", "compensation"]):
+                inp.fill(salary or "50000")
             _human_delay(0.2, 0.4)
         except Exception:
             continue
