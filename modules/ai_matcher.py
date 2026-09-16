@@ -1,8 +1,9 @@
 """
-AI Matcher Module — Gemini API
+AI Matcher Module — Gemini API with Key Rotation
 - Matches CV with job descriptions
 - Generates match score (0-100)
 - Generates personalized cover letter
+- Auto-rotates API key on 429 / quota errors (up to 10 keys)
 """
 
 import google.generativeai as genai
@@ -13,44 +14,115 @@ import re
 
 MIN_MATCH_SCORE = 60  # Only apply if score >= 60
 
+# Errors that indicate quota exhausted — trigger key rotation
+QUOTA_ERRORS = (
+    "429", "quota", "rate limit", "resource exhausted",
+    "too many requests", "ResourceExhausted"
+)
 
-def match_jobs_with_cv(cv_text: str, jobs: list, api_key: str, job_titles: str = "") -> list:
+
+def _is_quota_error(error_str: str) -> bool:
+    err = error_str.lower()
+    return any(q.lower() in err for q in QUOTA_ERRORS)
+
+
+def match_jobs_with_cv(cv_text: str, jobs: list, api_key: str,
+                       job_titles: str = "", user_id: int = None) -> list:
     """
     Compare CV against each job and return matched jobs with score + cover letter.
-    Only returns jobs with match_score >= MIN_MATCH_SCORE.
+    Auto-rotates Gemini API key on quota/429 errors.
     """
-    if not api_key or not cv_text:
-        print("[AI Matcher] API key ya CV text missing hai.")
+    if not cv_text:
+        print("[AI Matcher] CV text missing.")
         return []
 
-    genai.configure(api_key=api_key)
+    # --- Build key pool ---
+    # If user_id given, load rotation keys from DB; else use single key
+    key_pool = []   # list of (api_key_str, key_id_or_None)
+
+    if user_id:
+        try:
+            from modules.api_key_manager import get_all_keys, mark_quota_hit, mark_used
+            db_keys = get_all_keys(user_id)
+            for row in db_keys:
+                if row["api_key"] and not row["quota_hit"] and row["is_active"]:
+                    key_pool.append((row["api_key"], row["slot"]))
+        except Exception as e:
+            print(f"[AI Matcher] Could not load rotation keys: {e}")
+
+    # Fallback — add the main api_key if not already in pool
+    if api_key and api_key not in [k for k, _ in key_pool]:
+        key_pool.append((api_key, None))
+
+    if not key_pool:
+        print("[AI Matcher] No API keys available.")
+        return []
+
+    current_key_idx = 0
+    current_api_key, current_key_id = key_pool[current_key_idx]
+    genai.configure(api_key=current_api_key)
     model = genai.GenerativeModel("gemini-flash-lite-latest")
+    print(f"[AI Matcher] Using key slot {current_key_id or 'main'} | {len(key_pool)} keys available")
 
     matched = []
     print(f"[AI Matcher] {len(jobs)} jobs analyse ho rahi hain...")
 
     for i, job in enumerate(jobs):
-        try:
-            print(f"[AI Matcher] Job {i+1}/{len(jobs)}: {job.get('title')} @ {job.get('company')}")
+        attempt = 0
+        while attempt <= len(key_pool):
+            try:
+                print(f"[AI Matcher] Job {i+1}/{len(jobs)}: {job.get('title')} @ {job.get('company')}")
 
-            result = _analyse_single_job(model, cv_text, job)
+                result = _analyse_single_job(model, cv_text, job)
 
-            if result and result["match_score"] >= MIN_MATCH_SCORE:
-                job["match_score"]  = result["match_score"]
-                job["cover_letter"] = result["cover_letter"]
-                matched.append(job)
-                print(f"  ✓ Match score: {result['match_score']} — ADDED")
-            else:
-                score = result["match_score"] if result else 0
-                print(f"  ✗ Match score: {score} — SKIP")
+                # Track key usage
+                if user_id and current_key_id:
+                    try:
+                        mark_used(current_key_id)
+                    except Exception:
+                        pass
 
-            # Rate limit — Gemini free tier allows 15 req/min
-            time.sleep(2)
+                if result and result["match_score"] >= MIN_MATCH_SCORE:
+                    job["match_score"]  = result["match_score"]
+                    job["cover_letter"] = result["cover_letter"]
+                    matched.append(job)
+                    print(f"  ✓ Match score: {result['match_score']} — ADDED")
+                else:
+                    score = result["match_score"] if result else 0
+                    print(f"  ✗ Match score: {score} — SKIP")
 
-        except Exception as e:
-            print(f"[AI Matcher] Error on job {job.get('title')}: {e}")
-            time.sleep(5)
-            continue
+                time.sleep(2)
+                break  # success — move to next job
+
+            except Exception as e:
+                err_str = str(e)
+                if _is_quota_error(err_str):
+                    print(f"[AI Matcher] Quota/429 on key slot {current_key_id or 'main'} — rotating...")
+
+                    # Mark this key as quota-hit in DB
+                    if user_id and current_key_id:
+                        try:
+                            mark_quota_hit(current_key_id)
+                        except Exception:
+                            pass
+
+                    # Try next key
+                    current_key_idx += 1
+                    if current_key_idx >= len(key_pool):
+                        print("[AI Matcher] All API keys exhausted! Stopping.")
+                        return matched
+
+                    current_api_key, current_key_id = key_pool[current_key_idx]
+                    genai.configure(api_key=current_api_key)
+                    model = genai.GenerativeModel("gemini-flash-lite-latest")
+                    print(f"[AI Matcher] Switched to key slot {current_key_id or 'main'}")
+                    attempt += 1
+                    time.sleep(2)
+                    # retry same job with new key
+                else:
+                    print(f"[AI Matcher] Error on job {job.get('title')}: {err_str}")
+                    time.sleep(5)
+                    break  # non-quota error — skip job
 
     print(f"[AI Matcher] Done. {len(matched)} jobs matched.")
     return matched
@@ -88,7 +160,6 @@ IMPORTANT: Respond ONLY in this exact JSON format, no extra text:
         response = model.generate_content(prompt)
         text     = response.text.strip()
 
-        # Extract JSON from response
         json_match = re.search(r"\{.*\}", text, re.DOTALL)
         if json_match:
             data = json.loads(json_match.group())
@@ -98,9 +169,9 @@ IMPORTANT: Respond ONLY in this exact JSON format, no extra text:
                 "cover_letter": data.get("cover_letter", "")
             }
     except json.JSONDecodeError:
-        print(f"[AI Matcher] JSON parse error, response was: {text[:200]}")
+        print(f"[AI Matcher] JSON parse error")
     except Exception as e:
-        print(f"[AI Matcher] Gemini error: {e}")
+        raise  # re-raise so caller can handle quota errors
 
     return None
 

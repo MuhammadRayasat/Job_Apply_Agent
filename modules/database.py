@@ -58,6 +58,19 @@ def init_db():
             FOREIGN KEY (job_id)  REFERENCES jobs(id),
             UNIQUE(user_id, job_id)
         );
+
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            slot        INTEGER NOT NULL,
+            api_key     TEXT    NOT NULL,
+            is_active   INTEGER DEFAULT 1,
+            quota_hit   INTEGER DEFAULT 0,
+            last_used   TEXT,
+            error_count INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, slot)
+        );
     """)
     db.commit()
     db.close()

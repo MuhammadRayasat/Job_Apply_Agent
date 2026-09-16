@@ -166,7 +166,8 @@ def _run_auto_cycle(app):
                         cv_text=user["cv_text"],
                         jobs=[dict(j) for j in unprocessed],
                         api_key=user["gemini_api_key"],
-                        job_titles=user["job_titles"]
+                        job_titles=user["job_titles"],
+                        user_id=user["id"]
                     )
 
                     if not matched:

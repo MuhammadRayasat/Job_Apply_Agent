@@ -311,6 +311,23 @@ def setup():
             db.commit()
             flash("LinkedIn credentials save ho gaye!", "success")
 
+        # Save rotation API keys (slots 1-10)
+        elif action == "save_api_keys":
+            from modules.api_key_manager import save_key
+            saved = 0
+            for slot in range(1, 11):
+                key_val = request.form.get(f"api_key_{slot}", "").strip()
+                if key_val:
+                    save_key(session["user_id"], slot, key_val)
+                    saved += 1
+            flash(f"{saved} API key(s) save ho gayi!", "success")
+
+        # Reset quota hits manually
+        elif action == "reset_quota":
+            from modules.api_key_manager import reset_quota_hits
+            reset_quota_hits(session["user_id"])
+            flash("Sab API keys ki quota reset ho gayi!", "success")
+
         # Save Gmail credentials to .env
         elif action == "save_gmail":
             gmail_user = request.form.get("gmail_user", "").strip().lower()
@@ -369,9 +386,13 @@ def setup():
 
         return redirect(url_for("setup"))
 
+    from modules.api_key_manager import get_all_keys
+    api_keys = get_all_keys(session["user_id"])
+
     return render_template("setup.html", user=user,
                            cycle_minutes=int(os.environ.get("AUTO_CYCLE_MINUTES", 15)),
-                           gmail_user=os.environ.get("GMAIL_USER", ""))
+                           gmail_user=os.environ.get("GMAIL_USER", ""),
+                           api_keys=api_keys)
 
 
 # ---------------------------------------------------------------------------

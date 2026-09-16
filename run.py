@@ -26,7 +26,7 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print("  Job Apply Agent is running!")
     print("  Open: http://localhost:5001")
-    print("  Auto-cycle: every 15 minutes (background)")
+    print(f"  Auto-cycle: every {os.environ.get('AUTO_CYCLE_MINUTES', 15)} minutes (background)")
     print("="*50 + "\n")
 
     # Browser ko 1.5 second baad open karo (server start hone ka wait)
